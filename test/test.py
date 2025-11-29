@@ -11,7 +11,7 @@ async def test_project(dut):
     dut._log.info("Start")
 
     # Set the clock period to 10 us (100 KHz)
-    clock = Clock(dut.clk, 10, units="us")
+    clock = Clock(dut.clk, 10, unit="us")
     cocotb.start_soon(clock.start())
 
     # Reset
@@ -23,8 +23,8 @@ async def test_project(dut):
     await ClockCycles(dut.clk, 10)
     dut.rst_n.value = 1
     await ClockCycles(dut.clk, 10)
-    assert dut.uo_out.value == 0xC0
-    assert dut.uio_out.value == 0
+    assert dut.uo_out.value.to_unsigned() == 0xC0
+    assert dut.uio_out.value.to_unsigned() == 0
 
     dut._log.info("Test project behavior")
 
@@ -44,7 +44,7 @@ async def test_project(dut):
         await ClockCycles(dut.clk, 1)
 
     def get_output(b):
-        return (dut.uo_out.value >> b) & 1
+        return (dut.uo_out.value.to_unsigned() >> b) & 1
 
     OUTR = 0 # output reset
     ERRS = 1 # errors/properties output
@@ -70,7 +70,7 @@ async def test_project(dut):
         await clear_input(BCLK) # byte output clock down
         await set_input(BCLK) # byte output clock up
         assert get_output(BEOF) == eof
-        assert dut.uio_out.value == b
+        assert dut.uio_out.value.to_unsigned() == b
 
     async def write_char(b):
         dut.uio_in.value = b;
@@ -82,7 +82,7 @@ async def test_project(dut):
         await set_input(READ) # read mode
         await clear_input(CCLK) # char output clock down
         await set_input(CCLK) # char output clock up
-        assert dut.uio_out.value == b
+        assert dut.uio_out.value.to_unsigned() == b
 
     async def read_reset():
         await clear_input(OUTR) # read reset clock down
@@ -94,8 +94,8 @@ async def test_project(dut):
         await ClockCycles(dut.clk, 1)
         dut.rst_n.value = 1
         await ClockCycles(dut.clk, 1)
-        assert dut.uo_out.value == (0xC0 if (ui_in & 0x10) else 0)
-        assert dut.uio_out.value == 0
+        assert dut.uo_out.value.to_unsigned() == (0xC0 if (ui_in & 0x10) else 0)
+        assert dut.uio_out.value.to_unsigned() == 0
 
     async def write_cp(cp):
         await clear_input(READ) # write mode
@@ -118,11 +118,11 @@ async def test_project(dut):
             assert get_output(BEOF) == 0
             await clear_input(BCLK) # byte output clock down
             await set_input(BCLK) # byte output clock up
-            assert dut.uio_out.value == b
+            assert dut.uio_out.value.to_unsigned() == b
         assert get_output(BEOF) == 1
         await clear_input(BCLK) # byte output clock down
         await set_input(BCLK) # byte output clock up
-        assert dut.uio_out.value == 0
+        assert dut.uio_out.value.to_unsigned() == 0
         assert get_output(BEOF) == 1
 
     async def write_bytes(*args):
@@ -136,16 +136,16 @@ async def test_project(dut):
         await set_input(READ) # read mode
         await clear_input(CCLK) # char output clock down
         await set_input(CCLK) # char output clock up
-        assert dut.uio_out.value == (cp >> 24) & 0xFF
+        assert dut.uio_out.value.to_unsigned() == (cp >> 24) & 0xFF
         await clear_input(CCLK) # char output clock down
         await set_input(CCLK) # char output clock up
-        assert dut.uio_out.value == (cp >> 16) & 0xFF
+        assert dut.uio_out.value.to_unsigned() == (cp >> 16) & 0xFF
         await clear_input(CCLK) # char output clock down
         await set_input(CCLK) # char output clock up
-        assert dut.uio_out.value == (cp >> 8) & 0xFF
+        assert dut.uio_out.value.to_unsigned() == (cp >> 8) & 0xFF
         await clear_input(CCLK) # char output clock down
         await set_input(CCLK) # char output clock up
-        assert dut.uio_out.value == cp & 0xFF
+        assert dut.uio_out.value.to_unsigned() == cp & 0xFF
 
     async def write_utf16(*args):
         await clear_input(READ) # write mode
@@ -160,11 +160,11 @@ async def test_project(dut):
             assert get_output(UEOF) == 0
             await clear_input(UCLK) # UTF-16 output clock down
             await set_input(UCLK) # UTF-16 output clock up
-            assert dut.uio_out.value == b
+            assert dut.uio_out.value.to_unsigned() == b
         assert get_output(UEOF) == 1
         await clear_input(UCLK) # UTF-16 output clock down
         await set_input(UCLK) # UTF-16 output clock up
-        assert dut.uio_out.value == 0
+        assert dut.uio_out.value.to_unsigned() == 0
         assert get_output(UEOF) == 1
 
     UNDERFLOW = 0x00
@@ -177,11 +177,11 @@ async def test_project(dut):
 
     async def want_errs(errs):
         await set_input(ERRS) # error reporting mode
-        assert (dut.uo_out.value & 0x3F) == errs
+        assert (dut.uo_out.value.to_unsigned() & 0x3F) == errs
 
     async def want_retry(retry):
         await set_input(ERRS) # error reporting mode
-        assert (dut.uo_out.value & RETRY) == (RETRY if retry else 0)
+        assert (dut.uo_out.value.to_unsigned() & RETRY) == (RETRY if retry else 0)
 
     NORMAL    = 0x01
     CONTROL   = 0x02
@@ -192,7 +192,7 @@ async def test_project(dut):
 
     async def want_props(props):
         await clear_input(ERRS) # property reporting mode
-        assert (dut.uo_out.value & 0x3F) == props
+        assert (dut.uo_out.value.to_unsigned() & 0x3F) == props
 
     # register I/O
 
